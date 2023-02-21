@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { SystemService } from './system.service';
-import { SystemController } from './system.controller';
+import { CategoryModule } from './modules/category.module';
+import { RecordModule } from './modules/record.module';
 
 @Module({
-  controllers: [SystemController],
-  providers: [SystemService]
+  imports: [CategoryModule, RecordModule],
 })
 export class SystemModule {}
