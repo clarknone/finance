@@ -1,26 +1,123 @@
 import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  ForgotPasswordDto,
+  RefreshTokenDto,
+  ResetPasswordDto,
+  SignInDto,
+  SignUpDto,
+} from './dto/create-auth.dto';
+import { IAuthUser } from "./interfaces/auth.interface";
+import { Auth, UserDocument } from './schema/auth.schema';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { bruteForceCheck } from './helpers/services/auth.helper';
+import { ServiceException } from './exceptions/exceptions/service.layer.exception';
+import { parseDBError } from './helpers/services/misc';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
+  constructor(
+    @InjectModel(Auth.name) private UserSchema: Model<UserDocument>,
+    private jwtService: JwtService,
+  ) {}
+
+  async signup(data: SignUpDto): Promise<IAuthUser> {
+    return this.UserSchema.find({ email: data.email })
+      .then(async (users) => {
+        if (users.length) {
+          throw new ServiceException({ error: 'email already exist' });
+        }
+        const user = new this.UserSchema({ ...data });
+        const password = await bcrypt.hash(user.password, 10);
+        user.password = password;
+        await user.save();
+        return this.signUser(user);
+      })
+      .catch((e) => {
+        throw new ServiceException({ error: parseDBError(e) });
+      });
   }
 
-  findAll() {
-    return `This action returns all auth`;
+  async signin(data: SignInDto): Promise<IAuthUser> {
+    return this.UserSchema.findOne({ email: data.email })
+      .then(async (user) => {
+        if (!user) {
+          throw new ServiceException({ error: 'User not found' });
+        }
+        if (!(await bruteForceCheck(user))) {
+          throw new ServiceException({ error: 'Too many attempts, Try again in five minutes' });
+        }
+
+        if (await bcrypt.compare(data.password, user.password)) {
+          user.attempt = 0;
+          await user.save();
+          return this.signUser(user);
+        }
+        throw new ServiceException({ error: 'incorrect password' });
+      })
+      .catch((e) => {
+        throw new ServiceException({ error: parseDBError(e) });
+      });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+  async refreshToken(data: RefreshTokenDto): Promise<IAuthUser> {
+    return this.UserSchema.findOne({ refreshToken: data.refreshToken })
+      .then((user) => {
+        console.log(user);
+        if (!user) {
+          throw new ServiceException({ error: 'invalid refresh token', status: 401 });
+        }
+        if (!user.isActive) {
+          throw new ServiceException({ error: 'session expired', status: 401 });
+        }
+        return this.signUser(user);
+      })
+      .catch((e) => {
+        throw new ServiceException({ error: parseDBError(e) });
+      });
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
+  async forgotPassword(data: ForgotPasswordDto) {}
+  async resetPassword(data: ResetPasswordDto) {}
+
+  async logout(authUser: IAuthUser): Promise<void> {
+    this.UserSchema.findByIdAndUpdate(authUser.id, { isActive: false }).catch((e) => {
+      throw new ServiceException({ error: parseDBError(e) });
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  async signUser(user: UserDocument): Promise<IAuthUser> {
+    const token: string = this.jwtService.sign(
+      {
+        email: user.email,
+        type: user.type,
+        id: user._id,
+      },
+      { expiresIn: '45hr' },
+      // { expiresIn: '15min' },
+    );
+
+    const refreshToken: string = this.jwtService.sign(
+      {
+        email: user.email,
+        id: user._id,
+      },
+      { expiresIn: '3d' },
+    );
+
+    const authUser: IAuthUser = {
+      token,
+      refreshToken,
+      email: user.email,
+      id: user._id.toString(),
+      type: user.type,
+    };
+    // user.refreshToken = refreshToken;
+    user.isActive = true;
+    await user.save();
+
+    return authUser;
   }
 }
