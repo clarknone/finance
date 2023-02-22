@@ -1,1 +1,46 @@
+import { IsEmail, IsNotEmpty, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
+
 export class CreateAuthDto {}
+
+export class SignUpDto {
+
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}
+
+export class SignInDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}
+
+export class RefreshTokenDto {
+  @IsNotEmpty()
+  refreshToken: string;
+}
+
+export class ForgotPasswordDto {
+  @IsNotEmpty()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsNotEmpty()
+  user: string; 
+  
+  @IsNumber()
+  @IsNotEmpty()
+  code: string;
+
+  @IsNotEmpty()
+  password: string;
+}

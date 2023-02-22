@@ -1,34 +1,56 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
+import { isInstance } from 'class-validator';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { GetAuthUser } from './decorators/user.decorators';
+import {
+  ForgotPasswordDto,
+  RefreshTokenDto,
+  ResetPasswordDto,
+  SignInDto,
+  SignUpDto,
+} from './dto/create-auth.dto';
+import { JwtAuthGuard } from './helpers/guard/auth.guard';
+import { IAuthUser } from './interfaces/auth.interface';
+import { IErrorResponse } from './interfaces/response.interface';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  @Post('signup')
+  async signup(@Body() data: SignUpDto): Promise<IAuthUser> {
+    return this.authService.signup(data);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @Post('login')
+  async login(@Body() data: SignInDto): Promise<IAuthUser> {
+    return this.authService.signin(data);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@GetAuthUser() user: IAuthUser) {
+    return this.authService.logout(user);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
+  @Post('refresh')
+  refresh(@Body() data: RefreshTokenDto) {
+    return this.authService.refreshToken(data);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @Post('forgotpassword')
+  forgotPassword(@Body() data: ForgotPasswordDto) {
+    return this.authService.forgotPassword(data);
+  }
+
+  @Post('resetpassword')
+  resetPassword(@Body() data: ResetPasswordDto) {
+    return this.authService.resetPassword(data);
   }
 }
