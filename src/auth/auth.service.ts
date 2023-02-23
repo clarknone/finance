@@ -111,7 +111,7 @@ export class AuthService {
       token,
       refreshToken,
       email: user.email,
-      id: user._id.toString(),
+      id: user._id,
       type: user.type,
     };
     // user.refreshToken = refreshToken;

@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
+import { Types } from 'mongoose';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -13,6 +14,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(params: any) {
+    if (params?.id) {
+      params.id = new Types.ObjectId(params.id);
+    }
     return params;
   }
 }
