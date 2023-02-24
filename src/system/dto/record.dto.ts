@@ -1,3 +1,4 @@
+import { PartialType } from '@nestjs/mapped-types';
 import {
   IsEnum,
   IsNotEmpty,
@@ -23,3 +24,5 @@ export class CreateRecordDto {
   @IsString()
   description: string;
 }
+
+export class EditRecordDto extends PartialType(CreateRecordDto) {}
