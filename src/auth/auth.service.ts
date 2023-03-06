@@ -65,7 +65,6 @@ export class AuthService {
   async refreshToken(data: RefreshTokenDto): Promise<IAuthUser> {
     return this.UserSchema.findOne({ refreshToken: data.refreshToken })
       .then((user) => {
-        console.log(user);
         if (!user) {
           throw new ServiceException({ error: 'invalid refresh token', status: 401 });
         }
