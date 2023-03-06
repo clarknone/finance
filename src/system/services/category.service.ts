@@ -21,7 +21,6 @@ export class CategoryService {
   }
 
   async getCategories(user) {
-    console.log({ user });
     return this.CategorySchema.find({
       $or: [{ user: user }, { isDefault: true }],
     }).catch((e) => {
